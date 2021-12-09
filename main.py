@@ -2,14 +2,15 @@ import datetime
 import keras
 import pandas as pd
 from pathlib import Path
+import keras_tuner as kt
 
 import tensorflow as tf
 
 from keras_preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.losses import CategoricalCrossentropy
-from keras.optimizers import Adam
-from keras.layers import Input, Conv2D, MaxPool2D, Flatten, Dense
+from keras.optimizers import adam_v2
+from keras.layers import Input, Conv2D, MaxPool2D, Flatten, Dense, Dropout
 
 # TODO Find a way to turn off that red debugging spam from tensorflow, this does not work
 tf.get_logger().setLevel('WARN')
@@ -20,7 +21,7 @@ print(f'Using GPU {tf.test.gpu_device_name()}')
 WIDTH = 64
 HEIGHT = 64
 BATCH_SIZE = 64
-EPOCHS = 1
+EPOCHS = 10
 TRAIN_IMAGES_PATH = r'./dataset/train_set_labelled'
 TEST_IMAGES_PATH = r'./dataset/test_set'
 TRAIN_LABELS_PATH = r'./dataset/train_labels.csv'
@@ -33,7 +34,17 @@ print(f'Num classes: {NUM_CLASSES}  num samples: {NUM_EXAMPLES}')
 generator = ImageDataGenerator(
     validation_split=0.1,
     featurewise_center=True,
-    featurewise_std_normalization=True
+    featurewise_std_normalization=True,
+    rotation_range=180,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    rescale=1. / 255,
+    shear_range=0.2,
+    zoom_range=0.3,
+    horizontal_flip=True,
+    vertical_flip=True,
+    fill_mode='nearest',
+    brightness_range=[0.4, 1.5]
 )
 train_gen = generator.flow_from_directory(
     directory=TRAIN_IMAGES_PATH,
@@ -60,23 +71,37 @@ test_gen = generator.flow_from_directory(
 )
 
 
-def get_model() -> keras.Model:
+def get_model(hp) -> keras.Model:
     """
     Build, compile and return the model
     """
+
+    units_dense = hp.Int('units_dense', 16, 64, 16)
+    # rate_dropout = hp.Float('rate_dropout', 0.2, 0.5, 0.1)
+    num_conv_layers = hp.Int('num_conv_layers', 2, 4)
+    dense_dropout_rate = hp.Float('dense_dropout_rate', 0.2, 0.5, 0.1)
+
     model = Sequential()
     model.add(Input(shape=(WIDTH, HEIGHT, 3)))
-    model.add(Conv2D(filters=8, kernel_size=3, activation='relu', padding='same'))
-    model.add(MaxPool2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=16, kernel_size=3, activation='relu', padding='same'))
-    model.add(MaxPool2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=16, kernel_size=3, activation='relu', padding='same'))
-    model.add(MaxPool2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=32, kernel_size=3, activation='relu', padding='same'))
-    model.add(MaxPool2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=64, kernel_size=3, activation='relu', padding='same'))
+    for i in range(num_conv_layers):
+        filters_conv = hp.Int(f'filters_conv{i}', min_value=8, max_value=64, step=8)
+        # should_add_dropout = hp.Boolean(f'dropout{i}')
+
+        model.add(Conv2D(filters=filters_conv, kernel_size=3, activation='relu', padding='same'))
+        # if should_add_dropout:
+        #     model.add(Dropout(rate=rate_dropout))
+        model.add(MaxPool2D(pool_size=(2, 2)))
+        # model.add(Conv2D(filters=filters_conv, kernel_size=3, activation='relu', padding='same'))
+        # model.add(MaxPool2D(pool_size=(2, 2)))
+
+    # model.add(Conv2D(filters=16, kernel_size=3, activation='relu', padding='same'))
+    # model.add(MaxPool2D(pool_size=(2, 2)))
+    # model.add(Conv2D(filters=32, kernel_size=3, activation='relu', padding='same'))
+    # model.add(MaxPool2D(pool_size=(2, 2)))
+    # model.add(Conv2D(filters=64, kernel_size=3, activation='relu', padding='same'))
     model.add(Flatten())
-    model.add(Dense(units=128, activation='relu'))
+    model.add(Dense(units=units_dense, activation='relu'))
+    model.add(Dropout(dense_dropout_rate))
     model.add(Dense(units=NUM_CLASSES, activation='softmax'))
 
     model.compile(loss=CategoricalCrossentropy(), optimizer=Adam(), metrics='accuracy')
@@ -99,13 +124,51 @@ def make_predictions(model: keras.Model, test_gen: ImageDataGenerator):
     result.to_csv(f'predictions {datetime.datetime.now().strftime("%d-%m-%Y %Hh %Mm %Ss")}')
 
 
-model = get_model()
+# model = get_model(kt.HyperParameters())
+# model.summary()
+# model.fit(
+#     train_gen,
+#     validation_data=validation_gen,
+#     # steps_per_epoch=10,
+#     # validation_steps=1,
+#     epochs=EPOCHS,
+#     verbose=True,
+# )
+
+tuner = kt.RandomSearch(
+    hypermodel=get_model,
+    objective="accuracy",
+    max_trials=3,
+    executions_per_trial=1,
+    overwrite=True,
+    directory="keras_tuner_search",
+    project_name="aml_challenge",
+)
+
+tuner.search_space_summary()
+
+tuner.search(train_gen, epochs=1)
+
+# Get the top 2 models.
+models = tuner.get_best_models(num_models=2)
+
+best_model = models[0]
+# Build the model.
+# # Needed for `Sequential` without specified `input_shape`.
+# best_model.build(input_shape=(None, 28, 28))
+best_model.summary()
+tuner.results_summary()
+
+best_hps = tuner.get_best_hyperparameters()
+print('Best hyperparameters:' + str(best_hps[0].values))
+
+model = get_model(best_hps[0])
 model.summary()
 model.fit(
     train_gen,
     validation_data=validation_gen,
-    steps_per_epoch=10,
-    validation_steps=1,
+    # steps_per_epoch=10,
+    # validation_steps=1,
     epochs=EPOCHS,
     verbose=True,
 )
