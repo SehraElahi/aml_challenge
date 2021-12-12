@@ -99,6 +99,10 @@ feature_extractor = ResNet50(weights='imagenet',
                              input_shape=(WIDTH, HEIGHT, 3),
                              include_top=False)
 
+num_layers = len(feature_extractor.layers)
+for layer in feature_extractor.layers[:num_layers//2]:
+    layer.trainable = False
+
 model = Sequential()
 model.add(tf.keras.Input(shape=(WIDTH, HEIGHT, 3)))
 # model.add(Segmentation())
