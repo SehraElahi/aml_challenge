@@ -11,7 +11,7 @@ file_label_dict = pandas.read_csv(PATH_LABELS).set_index('img_name').to_dict()['
 
 for file in Path(INPUT_DATASET).iterdir():
     label = file_label_dict[file.name]
-    dest_path = Path(PATH_DESTINATION) / label
+    dest_path = Path(PATH_DESTINATION) / str(label)
     # Create missing directories if necessary
     dest_path.mkdir(parents=True, exist_ok=True)
     # Copy the file to the folder with a correct label
