@@ -14,10 +14,10 @@ tf.get_logger().setLevel('WARN')
 print(f'Using GPU {tf.test.gpu_device_name()}')
 
 # Global params and constants
-WIDTH = 256
-HEIGHT = 256
-BATCH_SIZE = 64
-EPOCHS = 20
+WIDTH = 224
+HEIGHT = 224
+BATCH_SIZE = 32
+EPOCHS = 6
 VALIDATION_SPLIT = 0.1
 TRAIN_IMAGES_PATH = r'./dataset/train_set_labelled'
 TEST_IMAGES_PATH = r'./dataset/test_set'
@@ -115,7 +115,7 @@ def make_predictions_from_memory(model: keras.Model, test_set: Dataset) -> None:
     print('Making predictions for test set')
     predictions = model.predict(test_set, verbose=True, batch_size=BATCH_SIZE)
     predictions = predictions.argmax(axis=1) + 1
-    filenames = [f.name for f in Path(TEST_IMAGES_PATH, 'test_set').iterdir()]
+    filenames = sorted([f.name for f in Path(TEST_IMAGES_PATH, 'test_set').iterdir()])
     result = pd.DataFrame({'img_name': filenames, 'label': predictions})
     result = result.set_index('img_name')
     result.to_csv(f'predictions {datetime.datetime.now().strftime("%d-%m-%Y %Hh %Mm %Ss")}')

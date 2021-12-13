@@ -8,14 +8,11 @@ def get_model():
     vgg16 = VGG16(input_shape=[WIDTH, HEIGHT, 3], weights='imagenet', include_top=False)
 
     # Freeze all all but 3 last layers
-    for layer in vgg16.layers[:-3]:
+    for layer in vgg16.layers:
         layer.trainable = False
 
     x = Flatten()(vgg16.output)
-
-    base1 = Dense(512, activation='relu')(x)
-    base2 = Dense(64, activation='relu')(base1)
-    pred = Dense(NUM_CLASSES, activation='softmax')(base2)
+    pred = Dense(NUM_CLASSES, activation='softmax')(x)
 
     model = Model(inputs=vgg16.input, outputs=pred)
     model.summary()
