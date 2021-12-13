@@ -105,10 +105,10 @@ def make_predictions_generator(model: keras.Model, test_gen: ImageDataGenerator)
     file_names = list(map(lambda x: x.split('\\')[1], test_gen.filenames))
     # Obtain final labels for predictions, add one since classes start from one
     predictions = predictions.argmax(axis=1) + 1
-    result = pd.DataFrame({'img_name': file_names, 'label': predictions})
+    result = pd.DataFrame({'img_name': file_names, 'label': predictions})   
     result = result.set_index('img_name')
     # Save the CSV file to main project directory
-    result.to_csv(f'predictions {datetime.datetime.now().strftime("%d-%m-%Y %Hh %Mm %Ss")}')
+    result.to_csv(f'predictions {datetime.datetime.now().strftime("%d-%m-%Y %Hh %Mm %Ss")}.csv')
 
 
 def make_predictions_from_memory(model: keras.Model, test_set: Dataset) -> None:
@@ -118,7 +118,7 @@ def make_predictions_from_memory(model: keras.Model, test_set: Dataset) -> None:
     filenames = sorted([f.name for f in Path(TEST_IMAGES_PATH, 'test_set').iterdir()])
     result = pd.DataFrame({'img_name': filenames, 'label': predictions})
     result = result.set_index('img_name')
-    result.to_csv(f'predictions {datetime.datetime.now().strftime("%d-%m-%Y %Hh %Mm %Ss")}')
+    result.to_csv(f'predictions {datetime.datetime.now().strftime("%d-%m-%Y %Hh %Mm %Ss")}.csv')
 
 
 def get_callbacks() -> list:
