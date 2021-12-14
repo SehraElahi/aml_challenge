@@ -30,7 +30,7 @@ if __name__ == '__main__':
         train_XY,
         batch_size=BATCH_SIZE,
         validation_data=validation_XY,
-        epochs=EPOCHS,
+        epochs=6,
         verbose=True,
         callbacks=get_callbacks()
     )

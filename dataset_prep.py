@@ -1,9 +1,9 @@
 from pathlib import Path
 import pandas
 
-INPUT_DATASET = './dataset/train_set'             # Path to a folder that contains all training images
-PATH_LABELS = './dataset/train_labels.csv'        # Path to CSV file containing training labels
-PATH_DESTINATION = './dataset/train_set_labelled' # Where new folder will be created with dataset organised in folders by label
+INPUT_DATASET = './dataset/train_set'  # Path to a folder that contains all training images
+PATH_LABELS = './dataset/train_labels.csv'  # Path to CSV file containing training labels
+PATH_DESTINATION = './dataset/train_set_labelled'  # Where new folder will be created with dataset organised in folders by label
 
 # Get a dict mapping file name to its label
 # Example: {'train_1.jpg': 21}
@@ -16,3 +16,12 @@ for file in Path(INPUT_DATASET).iterdir():
     dest_path.mkdir(parents=True, exist_ok=True)
     # Copy the file to the folder with a correct label
     file.rename(dest_path / file.name)
+
+
+def rename_labels_to_characters():
+    for folder in Path('dataset/train_set_labelled_az').iterdir():
+        new_filename = ''
+        for char in folder.name:
+            new_filename += chr(int(char) + 65)
+        new_filename = new_filename.rjust(3, 'A')
+        folder.rename(new_filename)

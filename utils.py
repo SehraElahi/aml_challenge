@@ -1,4 +1,6 @@
 import datetime
+from typing import Tuple
+
 import keras
 import pandas as pd
 from pathlib import Path
@@ -19,7 +21,7 @@ HEIGHT = 224
 BATCH_SIZE = 32
 EPOCHS = 6
 VALIDATION_SPLIT = 0.1
-TRAIN_IMAGES_PATH = r'./dataset/train_set_labelled'
+TRAIN_IMAGES_PATH = r'./dataset/train_set_labelled_az'
 TEST_IMAGES_PATH = r'./dataset/test_set'
 TRAIN_LABELS_PATH = r'./dataset/train_labels.csv'
 PREDICTIONS_PATH = r'predictions.csv'
@@ -28,12 +30,18 @@ NUM_CLASSES = len(list(Path(TRAIN_IMAGES_PATH).iterdir()))
 print(f'Num classes: {NUM_CLASSES}  num samples: {NUM_EXAMPLES}')
 
 
-def get_data_generators() -> tuple:
+def get_data_generators() -> Tuple[ImageDataGenerator, ImageDataGenerator, ImageDataGenerator]:
     # Generators allow to get the data in batches without having to worry about the memory
     generator = ImageDataGenerator(
         validation_split=VALIDATION_SPLIT,
         featurewise_center=True,
-        featurewise_std_normalization=True
+        featurewise_std_normalization=True,
+        rotation_range=30,
+        horizontal_flip=True,
+        brightness_range=(0.8, 1.2),
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        zoom_range=0.15
     )
     train_gen = generator.flow_from_directory(
         directory=TRAIN_IMAGES_PATH,
@@ -105,7 +113,7 @@ def make_predictions_generator(model: keras.Model, test_gen: ImageDataGenerator)
     file_names = list(map(lambda x: x.split('\\')[1], test_gen.filenames))
     # Obtain final labels for predictions, add one since classes start from one
     predictions = predictions.argmax(axis=1) + 1
-    result = pd.DataFrame({'img_name': file_names, 'label': predictions})   
+    result = pd.DataFrame({'img_name': file_names, 'label': predictions})
     result = result.set_index('img_name')
     # Save the CSV file to main project directory
     result.to_csv(f'predictions {datetime.datetime.now().strftime("%d-%m-%Y %Hh %Mm %Ss")}.csv')
